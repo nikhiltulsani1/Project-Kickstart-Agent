@@ -1,12 +1,21 @@
 from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich import box
 import json
 import re
 import sys
-from typing import Dict, List
+import time
+import threading
+import concurrent.futures
+from typing import Dict
 
 from src.copilot import CopilotClient
 from src.github_client import GitHubClient
 from src.generators.ci import generate_ci_workflow
+from src.generators.architecture import generate_architecture_doc
+from src.generators.readme import generate_readme
+from src.generators.testplan import generate_test_plan
 
 
 console = Console()
@@ -19,11 +28,22 @@ class ProjectKickstartAgent:
         self.copilot = CopilotClient()
 
     def run(self, description: str) -> None:
+        start_time = time.time()
+
+        def _lap():
+            return round(time.time() - _lap.last, 1)
+        _lap.last = start_time
+
+        def _tick():
+            elapsed = _lap()
+            _lap.last = time.time()
+            return elapsed
+
         # STEP 1: Parse intent
         try:
             intent = self.parse_intent(description)
             stack_items = ", ".join(intent.get("stack", []))
-            console.print(f"✓ Parsed: {intent.get('project_name')} ({stack_items})")
+            console.print(f"✓ Parsed: {intent.get('project_name')} ({stack_items}) [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 1 failed: {e}[/bold red]")
             sys.exit(1)
@@ -37,7 +57,7 @@ class ProjectKickstartAgent:
                 "Add a Makefile for common dev commands",
                 "Document the API with docstrings and a README",
             ]
-            console.print(f"✓ Retrieved {len(patterns)} architecture patterns")
+            console.print(f"✓ Retrieved {len(patterns)} architecture patterns [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 2 failed: {e}[/bold red]")
             sys.exit(1)
@@ -68,21 +88,47 @@ class ProjectKickstartAgent:
                     return json.loads(snippet)
                 raise
 
-        # STEP 3: Generate README
+        # STEP 3: Generate docs — API has a 2-request concurrency limit,
+        # so we run README + ARCHITECTURE together, then TESTPLAN after
+        readme_result = [None, None]  # [content, error]
+        arch_result = [None, None]
+
+        def _gen_readme():
+            try:
+                readme_result[0] = generate_readme(intent, patterns, self.copilot)
+            except Exception as e:
+                readme_result[1] = e
+
+        def _gen_arch():
+            try:
+                arch_result[0] = generate_architecture_doc(intent, patterns, self.copilot)
+            except Exception as e:
+                arch_result[1] = e
+
+        t1 = threading.Thread(target=_gen_readme)
+        t2 = threading.Thread(target=_gen_arch)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        if readme_result[1]:
+            console.print(f"[bold red]✗ README generation failed: {readme_result[1]}[/bold red]")
+            sys.exit(1)
+        if arch_result[1]:
+            console.print(f"[bold red]✗ Architecture doc failed: {arch_result[1]}[/bold red]")
+            sys.exit(1)
+
+        readme_md = readme_result[0]
+        arch_md = arch_result[0]
+        console.print(f"✓ Generated README.md + ARCHITECTURE.md (parallel) [dim]({_tick()}s)[/dim]")
+
+        # TESTPLAN runs after since we'd hit the concurrency cap otherwise
         try:
-            readme_system = (
-                "You are an expert technical writer and software architect.\n"
-                "Generate a professional README.md for a software project.\n"
-                "Include these sections: title, description, tech stack, \n"
-                "folder structure, how to run locally, environment variables, \n"
-                "contributing, and license.\n"
-                "Return markdown only. No explanation. No code fences."
-            )
-            readme_user = f"Project details: {intent}\nArchitecture patterns to follow: {patterns}"
-            readme_md = self.copilot.generate(readme_system, readme_user)
-            console.print("✓ Generated README.md")
+            testplan_md = generate_test_plan(intent, patterns, self.copilot)
+            console.print(f"✓ Generated TESTPLAN.md [dim]({_tick()}s)[/dim]")
         except Exception as e:
-            console.print(f"[bold red]✗ Step 3 failed: {e}[/bold red]")
+            console.print(f"[bold red]✗ Test plan failed: {e}[/bold red]")
             sys.exit(1)
 
         # STEP 4: Generate folder structure
@@ -99,7 +145,7 @@ class ProjectKickstartAgent:
             fs_json = _safe_load_json(fs_resp)
             if not isinstance(fs_json, dict):
                 raise ValueError("Folder structure response is not a JSON object")
-            console.print(f"✓ Generated folder structure ({len(fs_json)} files)")
+            console.print(f"✓ Generated folder structure ({len(fs_json)} files) [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 4 failed: {e}[/bold red]")
             sys.exit(1)
@@ -107,7 +153,7 @@ class ProjectKickstartAgent:
         # STEP 5: Generate CI workflow
         try:
             ci_yaml = generate_ci_workflow(intent, self.copilot)
-            console.print("✓ Generated CI workflow")
+            console.print(f"✓ Generated CI workflow [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 5 failed: {e}[/bold red]")
             sys.exit(1)
@@ -116,27 +162,32 @@ class ProjectKickstartAgent:
         try:
             gh = GitHubClient()
             repo = gh.create_repo(intent["project_name"], intent["description"])
-            console.print(f"✓ Created repo: {repo.html_url}")
+            console.print(f"✓ Created repo: {repo.html_url} [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 6 failed: {e}[/bold red]")
             sys.exit(1)
 
-        # STEP 7: Push all files
+        # STEP 7: Push everything in a single commit
         try:
-            gh.push_file(repo, "README.md", readme_md, "Add README.md")
-            gh.create_folder_structure(repo, fs_json)
-            total_files = 1 + len(fs_json)
-            console.print(f"✓ Pushed {total_files} files to repo")
+            # bundle all generated files together
+            all_files = {
+                "README.md": readme_md,
+                "ARCHITECTURE.md": arch_md,
+                "TESTPLAN.md": testplan_md,
+                ".github/workflows/ci.yml": ci_yaml,
+            }
+            all_files.update(fs_json)
+            total_files = len(all_files)
+
+            gh.create_folder_structure(
+                repo,
+                all_files,
+                commit_message="feat: initial project setup by Project Kickstart Agent",
+            )
+            console.print(f"✓ Pushed {total_files} files in a single commit [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 7 failed: {e}[/bold red]")
             sys.exit(1)
-
-        # Push CI workflow separately — requires 'workflow' scope on the PAT
-        try:
-            gh.push_file(repo, ".github/workflows/ci.yml", ci_yaml, "Add CI workflow")
-            console.print("✓ Added CI workflow (.github/workflows/ci.yml)")
-        except Exception:
-            console.print("[yellow]⚠ Skipped CI workflow push — add 'workflow' scope to your PAT to enable this[/yellow]")
 
         # STEP 8: Create 5 sprint issues
         try:
@@ -153,28 +204,46 @@ class ProjectKickstartAgent:
             if not isinstance(issues_json, list) or len(issues_json) != 5:
                 raise ValueError("Issues response must be a JSON array of exactly 5 objects")
 
-            created = 0
             for issue in issues_json:
-                title = issue.get("title")
-                body = issue.get("body")
-                if not title or not body:
+                if not issue.get("title") or not issue.get("body"):
                     raise ValueError("Each issue must have title and body")
-                gh.create_issue(repo, title, body)
-                created += 1
 
-            if created != 5:
-                raise RuntimeError("Did not create 5 issues")
+            def _create_single_issue(issue):
+                return gh.create_issue(repo, issue["title"], issue["body"])
 
-            console.print("✓ Created 5 sprint issues")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+                futures = [pool.submit(_create_single_issue, i) for i in issues_json]
+                results = [f.result() for f in futures]
+
+            console.print(f"✓ Created {len(results)} sprint issues [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 8 failed: {e}[/bold red]")
             sys.exit(1)
 
-        # Final output
-        console.print("")
-        console.print("[bold green]✓ Done! Your repo is ready:[/bold green]")
-        console.print(f"[bold blue]{repo.html_url}[/bold blue]")
-        console.print(f"[dim]Created: README.md + {len(fs_json)} files + CI workflow + 5 issues[/dim]")
+        # wrap it up with a summary panel
+        elapsed = round(time.time() - start_time, 1)
+        repo_url = repo.html_url
+        file_count = total_files
+        project_name = intent["project_name"]
+
+        summary = Table(show_header=False, box=None, padding=(0, 2))
+        summary.add_row("📁 Repo", project_name)
+        summary.add_row("📄 Files pushed", f"{file_count} files")
+        summary.add_row("✅ CI Workflow", ".github/workflows/ci.yml")
+        summary.add_row("🎯 Sprint Issues", "5 issues created")
+        summary.add_row("🏗️ Patterns", "5 architecture patterns applied")
+        summary.add_row("⏱️  Time", f"{elapsed}s")
+
+        panel = Panel(
+            summary,
+            title=f"[bold green]✓ {project_name} is ready[/bold green]",
+            border_style="green",
+            box=box.ROUNDED,
+            subtitle=f"[dim]{repo_url}[/dim]",
+        )
+        console.print()
+        console.print(panel, width=100)
+        console.print()
 
     def parse_intent(self, description: str) -> Dict:
         """Extract structured project intent from a freeform description.

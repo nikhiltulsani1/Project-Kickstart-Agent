@@ -1,6 +1,7 @@
 import os
 from typing import Dict
 
+import github
 from dotenv import load_dotenv
 from github import Github
 from github.GithubException import UnknownObjectException, GithubException
@@ -21,19 +22,13 @@ class GitHubClient:
         self.gh = Github(self.token)
 
     def create_repo(self, name: str, description: str):
-        """Create a public repository under the authenticated user.
-
-        Raises ValueError if the repo already exists.
-        Returns the created Repository object.
-        """
+        # make a new public repo, blow up if it already exists
         user = self.gh.get_user()
         try:
-            # If repo exists, get_repo will succeed
             existing = user.get_repo(name)
             if existing:
                 raise ValueError(f"Repository '{name}' already exists for user {self.username}")
         except UnknownObjectException:
-            # Repo does not exist, create it
             try:
                 repo = user.create_repo(name=name, description=description, private=False)
                 return repo
@@ -43,13 +38,12 @@ class GitHubClient:
             raise RuntimeError(f"GitHub API error checking repo existence: {e}") from e
 
     def push_file(self, repo, file_path: str, content: str, commit_message: str) -> bool:
-        """Create or update a file in the repository. Returns True on success."""
+        # push a single file — handles empty repos where get_contents throws 404
         try:
             try:
                 existing = repo.get_contents(file_path)
                 repo.update_file(existing.path, commit_message, content, existing.sha)
             except (UnknownObjectException, GithubException) as e:
-                # PyGithub can raise GithubException with status 404 for empty repo
                 status = getattr(e, "status", None)
                 msg = str(e)
                 if status == 404 or "This repository is empty" in msg or "Not Found" in msg:
@@ -60,19 +54,47 @@ class GitHubClient:
         except GithubException as e:
             raise RuntimeError(f"Failed to push file '{file_path}': {e}") from e
 
+    def create_folder_structure(self, repo, files: Dict[str, str], commit_message: str = "initial project setup") -> bool:
+        # batch all files into a single commit using git tree API
+        # empty repos don't have a main branch yet, so we seed one first
+        try:
+            try:
+                ref = repo.get_git_ref("heads/main")
+                base_commit = repo.get_git_commit(ref.object.sha)
+                base_tree = base_commit.tree
+            except (UnknownObjectException, GithubException):
+                # repo is empty — seed it with a placeholder so we have a ref
+                repo.create_file(".gitkeep", "initial commit", "")
+                ref = repo.get_git_ref("heads/main")
+                base_commit = repo.get_git_commit(ref.object.sha)
+                base_tree = base_commit.tree
+
+            tree_elements = []
+            for path, content in files.items():
+                tree_elements.append(
+                    github.InputGitTreeElement(
+                        path=path,
+                        mode="100644",
+                        type="blob",
+                        content=content,
+                    )
+                )
+
+            new_tree = repo.create_git_tree(tree_elements, base_tree)
+            new_commit = repo.create_git_commit(
+                message=commit_message,
+                tree=new_tree,
+                parents=[base_commit],
+            )
+            ref.edit(new_commit.sha)
+            return True
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to push files in single commit: {e}") from e
+
     def create_issue(self, repo, title: str, body: str) -> int:
-        """Create an issue in the given repo and return its number."""
         try:
             issue = repo.create_issue(title=title, body=body)
             return issue.number
         except GithubException as e:
             raise RuntimeError(f"Failed to create issue: {e}") from e
-
-    def create_folder_structure(self, repo, files: Dict[str, str]) -> bool:
-        """Push multiple files to the repository. `files` is a dict of path->content."""
-        for path, content in files.items():
-            ok = self.push_file(repo, path, content, commit_message=f"Add {path}")
-            if not ok:
-                return False
-        return True
-# Creates the repo, pushes the generated files, and opens the first sprint issues.
