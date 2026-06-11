@@ -1,0 +1,1 @@
+A REST API backend for a task management app. Users can create accounts, create projects, add tasks with due dates and priorities, and invite team members. Built with FastAPI and PostgreSQL.

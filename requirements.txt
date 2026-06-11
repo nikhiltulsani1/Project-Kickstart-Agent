@@ -1,0 +1,8 @@
+azure-ai-projects
+azure-identity
+PyGithub
+python-dotenv
+requests
+rich
+click
+pytest
