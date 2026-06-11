@@ -125,13 +125,18 @@ class ProjectKickstartAgent:
         try:
             gh.push_file(repo, "README.md", readme_md, "Add README.md")
             gh.create_folder_structure(repo, fs_json)
-            gh.push_file(repo, ".github/workflows/ci.yml", ci_yaml, "Add CI workflow")
-            total_files = 1 + len(fs_json) + 1
+            total_files = 1 + len(fs_json)
             console.print(f"✓ Pushed {total_files} files to repo")
-            console.print("✓ Added CI workflow (.github/workflows/ci.yml)")
         except Exception as e:
             console.print(f"[bold red]✗ Step 7 failed: {e}[/bold red]")
             sys.exit(1)
+
+        # Push CI workflow separately — requires 'workflow' scope on the PAT
+        try:
+            gh.push_file(repo, ".github/workflows/ci.yml", ci_yaml, "Add CI workflow")
+            console.print("✓ Added CI workflow (.github/workflows/ci.yml)")
+        except Exception:
+            console.print("[yellow]⚠ Skipped CI workflow push — add 'workflow' scope to your PAT to enable this[/yellow]")
 
         # STEP 8: Create 5 sprint issues
         try:
