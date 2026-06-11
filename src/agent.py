@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from src.copilot import CopilotClient
 from src.github_client import GitHubClient
+from src.generators.ci import generate_ci_workflow
 
 
 console = Console()
@@ -13,6 +14,9 @@ console = Console()
 
 class ProjectKickstartAgent:
     """Ties together all the moving parts and drives the flow end-to-end."""
+
+    def __init__(self):
+        self.copilot = CopilotClient()
 
     def run(self, description: str) -> None:
         # STEP 1: Parse intent
@@ -37,8 +41,6 @@ class ProjectKickstartAgent:
         except Exception as e:
             console.print(f"[bold red]✗ Step 2 failed: {e}[/bold red]")
             sys.exit(1)
-
-        copilot = CopilotClient()
 
         def _strip_fences(text: str) -> str:
             # remove ```json or ``` blocks
@@ -77,7 +79,7 @@ class ProjectKickstartAgent:
                 "Return markdown only. No explanation. No code fences."
             )
             readme_user = f"Project details: {intent}\nArchitecture patterns to follow: {patterns}"
-            readme_md = copilot.generate(readme_system, readme_user)
+            readme_md = self.copilot.generate(readme_system, readme_user)
             console.print("✓ Generated README.md")
         except Exception as e:
             console.print(f"[bold red]✗ Step 3 failed: {e}[/bold red]")
@@ -93,7 +95,7 @@ class ProjectKickstartAgent:
                 "Tailor contents to the project stack. Return valid JSON only, no markdown."
             )
             fs_user = f"Project: {intent}"
-            fs_resp = copilot.generate(fs_system, fs_user)
+            fs_resp = self.copilot.generate(fs_system, fs_user)
             fs_json = _safe_load_json(fs_resp)
             if not isinstance(fs_json, dict):
                 raise ValueError("Folder structure response is not a JSON object")
@@ -102,28 +104,41 @@ class ProjectKickstartAgent:
             console.print(f"[bold red]✗ Step 4 failed: {e}[/bold red]")
             sys.exit(1)
 
-        # STEP 5: Create GitHub repo
+        # STEP 5: Generate CI workflow
+        try:
+            ci_yaml = generate_ci_workflow(intent, self.copilot)
+            console.print("✓ Generated CI workflow")
+        except Exception as e:
+            console.print(f"[bold red]✗ Step 5 failed: {e}[/bold red]")
+            sys.exit(1)
+
+        # STEP 6: Create GitHub repo
         try:
             gh = GitHubClient()
             repo = gh.create_repo(intent["project_name"], intent["description"])
             console.print(f"✓ Created repo: {repo.html_url}")
         except Exception as e:
-            console.print(f"[bold red]✗ Step 5 failed: {e}[/bold red]")
+            console.print(f"[bold red]✗ Step 6 failed: {e}[/bold red]")
             sys.exit(1)
 
-        # STEP 6: Push all files
+        # STEP 7: Push all files
         try:
-            # Push README.md
             gh.push_file(repo, "README.md", readme_md, "Add README.md")
-            # Push folder structure
             gh.create_folder_structure(repo, fs_json)
             total_files = 1 + len(fs_json)
             console.print(f"✓ Pushed {total_files} files to repo")
         except Exception as e:
-            console.print(f"[bold red]✗ Step 6 failed: {e}[/bold red]")
+            console.print(f"[bold red]✗ Step 7 failed: {e}[/bold red]")
             sys.exit(1)
 
-        # STEP 7: Create 5 sprint issues
+        # Push CI workflow separately — requires 'workflow' scope on the PAT
+        try:
+            gh.push_file(repo, ".github/workflows/ci.yml", ci_yaml, "Add CI workflow")
+            console.print("✓ Added CI workflow (.github/workflows/ci.yml)")
+        except Exception:
+            console.print("[yellow]⚠ Skipped CI workflow push — add 'workflow' scope to your PAT to enable this[/yellow]")
+
+        # STEP 8: Create 5 sprint issues
         try:
             issues_system = (
                 "You are a senior engineer creating a sprint backlog.\n"
@@ -133,7 +148,7 @@ class ProjectKickstartAgent:
                 "Return valid JSON array only, no markdown."
             )
             issues_user = f"Project: {intent}"
-            issues_resp = copilot.generate(issues_system, issues_user)
+            issues_resp = self.copilot.generate(issues_system, issues_user)
             issues_json = _safe_load_json(issues_resp)
             if not isinstance(issues_json, list) or len(issues_json) != 5:
                 raise ValueError("Issues response must be a JSON array of exactly 5 objects")
@@ -152,14 +167,14 @@ class ProjectKickstartAgent:
 
             console.print("✓ Created 5 sprint issues")
         except Exception as e:
-            console.print(f"[bold red]✗ Step 7 failed: {e}[/bold red]")
+            console.print(f"[bold red]✗ Step 8 failed: {e}[/bold red]")
             sys.exit(1)
 
         # Final output
         console.print("")
         console.print("[bold green]✓ Done! Your repo is ready:[/bold green]")
         console.print(f"[bold blue]{repo.html_url}[/bold blue]")
-        console.print(f"[dim]Created: README.md + {len(fs_json)} files + 5 issues[/dim]")
+        console.print(f"[dim]Created: README.md + {len(fs_json)} files + CI workflow + 5 issues[/dim]")
 
     def parse_intent(self, description: str) -> Dict:
         """Extract structured project intent from a freeform description.
@@ -181,8 +196,7 @@ class ProjectKickstartAgent:
             "- language: primary programming language"
         )
 
-        client = CopilotClient()
-        resp_text = client.generate(system_prompt, description)
+        resp_text = self.copilot.generate(system_prompt, description)
 
         # Attempt to safely extract JSON from the response
         try:
