@@ -25,3 +25,24 @@ def test_parse_intent_empty_raises():
     agent = ProjectKickstartAgent()
     with pytest.raises(ValueError):
         agent.parse_intent("")
+
+
+def test_language_aware_structure():
+    from src.language_config import detect_language_config
+
+    # use a hardcoded intent — this tests language detection, not the LLM
+    intent = {
+        "project_name": "react-dashboard",
+        "project_type": "web app",
+        "stack": ["React", "Node.js", "MongoDB"],
+        "description": "A React dashboard with Node.js API",
+        "language": "JavaScript",
+    }
+    print("\nIntent:", intent)
+
+    config = detect_language_config(intent)
+    print("Detected language config:", config["language"])
+
+    assert config["language"] == "nodejs"
+    assert "package.json" in config["folder_structure"]
+    assert "src/index.js" in config["folder_structure"]

@@ -28,6 +28,7 @@ class ProjectKickstartAgent:
         self.copilot = CopilotClient()
 
     def run(self, description: str) -> None:
+        console.print(f"[dim]Using model: {self.copilot.current_model}[/dim]")
         start_time = time.time()
 
         def _lap():
@@ -131,21 +132,52 @@ class ProjectKickstartAgent:
             console.print(f"[bold red]✗ Test plan failed: {e}[/bold red]")
             sys.exit(1)
 
-        # STEP 4: Generate folder structure
+        # STEP 4: Build folder structure — language template as the base,
+        # then ask the LLM to tailor the 3 core files to the actual stack
         try:
-            fs_system = (
-                "You are a software architect. Return ONLY a JSON object where \n"
-                "keys are file paths and values are minimal file contents or empty strings.\n"
-                "Include: src/__init__.py, src/main.py, src/models.py, src/routes.py,\n"
-                "tests/__init__.py, tests/test_main.py, .env.example, Makefile.\n"
-                "Tailor contents to the project stack. Return valid JSON only, no markdown."
+            from src.language_config import detect_language_config, get_placeholder_test
+            lang_config = detect_language_config(intent)
+            base_files = lang_config["folder_structure"].copy()
+
+            test_path, test_content = get_placeholder_test(intent, intent["project_name"])
+            base_files[test_path] = test_content
+
+            # for Go, use just the project name as the module (no github.com prefix)
+            # so internal import paths in LLM-generated files match go.mod exactly
+            go_module = intent["project_name"]
+            if lang_config["language"] == "go" and "go.mod" in base_files:
+                base_files["go.mod"] = f"module {go_module}\n\ngo 1.22"
+
+            entry_files = lang_config.get("llm_entry_files", ["src/main.py", "src/models.py", "src/routes.py"])
+            if entry_files:
+                fs_system = (
+                    "You are a software engineer. Generate starter content for specific files.\n"
+                    "Return ONLY valid JSON where keys are filenames and values are file contents.\n"
+                    "Tailor every file to the exact project description and stack.\n"
+                    "No markdown, no code fences, valid JSON only.\n"
+                )
+                go_note = (
+                    f" The Go module name is '{go_module}' — all internal imports must use "
+                    f"'{go_module}/internal/...' as the prefix. Do NOT use 'github.com/...' prefixes."
+                    if lang_config["language"] == "go" else ""
+                )
+                fs_user = (
+                    f"Project: {intent}\n"
+                    f"Generate content ONLY for these exact file paths: {entry_files}\n"
+                    f"Use real imports and starter code for {intent['stack']}."
+                    f"{go_note}\n"
+                    f"Return a JSON object with exactly those keys."
+                )
+                fs_resp = self.copilot.generate(fs_system, fs_user)
+                llm_files = _safe_load_json(fs_resp)
+                if isinstance(llm_files, dict):
+                    base_files.update(llm_files)
+
+            fs_json = base_files
+            console.print(
+                f"✓ Generated folder structure ({len(fs_json)} files)"
+                f" — {lang_config['language']} template [dim]({_tick()}s)[/dim]"
             )
-            fs_user = f"Project: {intent}"
-            fs_resp = self.copilot.generate(fs_system, fs_user)
-            fs_json = _safe_load_json(fs_resp)
-            if not isinstance(fs_json, dict):
-                raise ValueError("Folder structure response is not a JSON object")
-            console.print(f"✓ Generated folder structure ({len(fs_json)} files) [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 4 failed: {e}[/bold red]")
             sys.exit(1)
@@ -177,23 +209,6 @@ class ProjectKickstartAgent:
                 ".github/workflows/ci.yml": ci_yaml,
                 # always provide a requirements.txt so CI pip install never errors
                 "requirements.txt": "pytest\n",
-                "tests/test_scaffold.py": (
-                    "import pytest\n"
-                    "\n"
-                    "\n"
-                    "def test_project_scaffolded():\n"
-                    '    """\n'
-                    "    Placeholder test — confirms project was scaffolded successfully.\n"
-                    "    Replace with real tests as you build your application.\n"
-                    '    """\n'
-                    "    assert True\n"
-                    "\n"
-                    "\n"
-                    "def test_readme_exists():\n"
-                    '    """Confirms README was generated."""\n'
-                    "    import os\n"
-                    "    assert os.path.exists(\"README.md\") or True  # passes in CI environment\n"
-                ),
             }
             all_files.update(fs_json)
             total_files = len(all_files)
@@ -251,6 +266,7 @@ class ProjectKickstartAgent:
         summary.add_row("✅ CI Workflow", ".github/workflows/ci.yml")
         summary.add_row("🎯 Sprint Issues", "5 issues created")
         summary.add_row("🏗️ Patterns", "5 architecture patterns applied")
+        summary.add_row("🤖 Model", self.copilot.current_model)
         summary.add_row("⏱️  Time", f"{elapsed}s")
 
         panel = Panel(
