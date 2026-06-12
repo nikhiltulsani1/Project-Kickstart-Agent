@@ -131,21 +131,35 @@ class ProjectKickstartAgent:
             console.print(f"[bold red]✗ Test plan failed: {e}[/bold red]")
             sys.exit(1)
 
-        # STEP 4: Generate folder structure
+        # STEP 4: Build folder structure — language template as the base,
+        # then ask the LLM to tailor the 3 core files to the actual stack
         try:
+            from src.language_config import detect_language_config
+            lang_config = detect_language_config(intent)
+            base_files = lang_config["folder_structure"].copy()
+
             fs_system = (
-                "You are a software architect. Return ONLY a JSON object where \n"
-                "keys are file paths and values are minimal file contents or empty strings.\n"
-                "Include: src/__init__.py, src/main.py, src/models.py, src/routes.py,\n"
-                "tests/__init__.py, tests/test_main.py, .env.example, Makefile.\n"
-                "Tailor contents to the project stack. Return valid JSON only, no markdown."
+                "You are a software engineer. Generate starter content for specific files.\n"
+                "Return ONLY valid JSON where keys are filenames and values are file contents.\n"
+                "Tailor every file to the exact project description and stack.\n"
+                "No markdown, no code fences, valid JSON only.\n"
             )
-            fs_user = f"Project: {intent}"
+            fs_user = (
+                f"Project: {intent}\n"
+                f"Generate content for: src/main.py (or equivalent entry point for {lang_config['language']}), "
+                f"src/models.py (or equivalent), src/routes.py (or equivalent). "
+                f"Use real imports and starter code for {intent['stack']}."
+            )
             fs_resp = self.copilot.generate(fs_system, fs_user)
-            fs_json = _safe_load_json(fs_resp)
-            if not isinstance(fs_json, dict):
-                raise ValueError("Folder structure response is not a JSON object")
-            console.print(f"✓ Generated folder structure ({len(fs_json)} files) [dim]({_tick()}s)[/dim]")
+            llm_files = _safe_load_json(fs_resp)
+            if isinstance(llm_files, dict):
+                base_files.update(llm_files)
+
+            fs_json = base_files
+            console.print(
+                f"✓ Generated folder structure ({len(fs_json)} files)"
+                f" — {lang_config['language']} template [dim]({_tick()}s)[/dim]"
+            )
         except Exception as e:
             console.print(f"[bold red]✗ Step 4 failed: {e}[/bold red]")
             sys.exit(1)

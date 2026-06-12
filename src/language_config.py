@@ -11,6 +11,19 @@ _CONFIGS = {
         "ci_version_val": "3.11",
         "src_folder": "src",
         "placeholder_test": "pytest",
+        "folder_structure": {
+            "src/__init__.py": "",
+            "src/main.py": "# Entry point",
+            "src/models.py": "# Database models",
+            "src/routes.py": "# API routes",
+            "src/services.py": "# Business logic",
+            "src/config.py": "# Configuration",
+            "tests/__init__.py": "",
+            "tests/test_main.py": "# Add your tests here",
+            ".env.example": "DATABASE_URL=\nSECRET_KEY=\nDEBUG=True",
+            "requirements.txt": "# Add your dependencies here",
+            "Makefile": "install:\n\tpip install -r requirements.txt\n\ntest:\n\tpytest\n\nrun:\n\tpython src/main.py",
+        },
     },
     "nodejs": {
         "language": "nodejs",
@@ -24,6 +37,18 @@ _CONFIGS = {
         "ci_version_val": "20",
         "src_folder": "src",
         "placeholder_test": "jest",
+        "folder_structure": {
+            "src/index.js": "// Entry point",
+            "src/routes/index.js": "// Routes",
+            "src/controllers/index.js": "// Controllers",
+            "src/models/index.js": "// Models",
+            "src/middleware/auth.js": "// Auth middleware",
+            "src/config/index.js": "// Configuration",
+            "tests/index.test.js": "// Add your tests here",
+            ".env.example": "PORT=3000\nDATABASE_URL=\nJWT_SECRET=",
+            "package.json": '{\n  "name": "project",\n  "version": "1.0.0",\n  "scripts": {\n    "start": "node src/index.js",\n    "test": "jest",\n    "dev": "nodemon src/index.js"\n  }\n}',
+            ".gitignore": "node_modules/\n.env\ndist/",
+        },
     },
     "go": {
         "language": "go",
@@ -37,6 +62,18 @@ _CONFIGS = {
         "ci_version_val": "1.22",
         "src_folder": "cmd",
         "placeholder_test": "go",
+        "folder_structure": {
+            "cmd/main.go": "package main\n\nfunc main() {\n}",
+            "internal/handlers/handler.go": "package handlers",
+            "internal/models/model.go": "package models",
+            "internal/repository/repo.go": "package repository",
+            "internal/services/service.go": "package services",
+            "pkg/config/config.go": "package config",
+            "tests/main_test.go": "package tests",
+            "go.mod": "module github.com/user/project\n\ngo 1.22",
+            ".env.example": "DATABASE_URL=\nPORT=8080",
+            "Makefile": "build:\n\tgo build ./...\n\ntest:\n\tgo test ./...\n\nrun:\n\tgo run cmd/main.go",
+        },
     },
     "java": {
         "language": "java",
@@ -50,6 +87,34 @@ _CONFIGS = {
         "ci_version_val": "21",
         "src_folder": "src/main/java",
         "placeholder_test": "java",
+        "folder_structure": {
+            "src/main/java/com/project/Application.java": (
+                "package com.project;\n\n"
+                "import org.springframework.boot.SpringApplication;\n"
+                "import org.springframework.boot.autoconfigure.SpringBootApplication;\n\n"
+                "@SpringBootApplication\n"
+                "public class Application {\n"
+                "    public static void main(String[] args) {\n"
+                "        SpringApplication.run(Application.class, args);\n"
+                "    }\n"
+                "}"
+            ),
+            "src/main/java/com/project/controller/Controller.java": "package com.project.controller;",
+            "src/main/java/com/project/model/Model.java": "package com.project.model;",
+            "src/main/java/com/project/service/Service.java": "package com.project.service;",
+            "src/main/java/com/project/repository/Repository.java": "package com.project.repository;",
+            "src/main/resources/application.properties": "server.port=8080\nspring.datasource.url=",
+            "src/test/java/com/project/ApplicationTests.java": (
+                "package com.project;\n\n"
+                "import org.junit.jupiter.api.Test;\n\n"
+                "class ApplicationTests {\n"
+                "    @Test\n"
+                "    void contextLoads() {}\n"
+                "}"
+            ),
+            "pom.xml": "<!-- Maven POM file -->",
+            ".env.example": "DATABASE_URL=\nJWT_SECRET=",
+        },
     },
     "ruby": {
         "language": "ruby",
@@ -63,6 +128,17 @@ _CONFIGS = {
         "ci_version_val": "3.3",
         "src_folder": "app",
         "placeholder_test": "ruby",
+        "folder_structure": {
+            "app/controllers/application_controller.rb": "class ApplicationController < ActionController::Base\nend",
+            "app/models/application_record.rb": "class ApplicationRecord < ActiveRecord::Base\n  self.abstract_class = true\nend",
+            "app/views/.gitkeep": "",
+            "config/routes.rb": "Rails.application.routes.draw do\nend",
+            "config/database.yml": "default: &default\n  adapter: postgresql\n  encoding: unicode",
+            "db/seeds.rb": "# Add seed data here",
+            "spec/spec_helper.rb": "# RSpec configuration",
+            "Gemfile": "source 'https://rubygems.org'\ngem 'rails'\ngem 'pg'\ngem 'rspec-rails', group: :test",
+            ".env.example": "DATABASE_URL=\nSECRET_KEY_BASE=",
+        },
     },
 }
 
