@@ -49,16 +49,31 @@ class ProjectKickstartAgent:
             console.print(f"[bold red]✗ Step 1 failed: {e}[/bold red]")
             sys.exit(1)
 
-        # STEP 2: Retrieve architecture patterns (hardcoded for now)
+        # STEP 2: Retrieve architecture patterns via Foundry IQ, fallback to defaults
         try:
-            patterns = [
-                "Use layered architecture: separate concerns into routes, services, models",
-                "Write tests first: include pytest setup in initial scaffold",
-                "Use environment variables for all secrets and config",
-                "Add a Makefile for common dev commands",
-                "Document the API with docstrings and a README",
-            ]
-            console.print(f"✓ Retrieved {len(patterns)} architecture patterns [dim]({_tick()}s)[/dim]")
+            from src.foundry import FoundryIQClient
+            foundry = FoundryIQClient()
+            if foundry.is_available():
+                patterns = foundry.retrieve_patterns(
+                    intent["project_type"],
+                    intent["stack"],
+                )
+                if foundry.used_fallback:
+                    pattern_source = "default"
+                elif foundry.backend == "github-models":
+                    pattern_source = "GitHub Models (Foundry IQ fallback)"
+                else:
+                    pattern_source = "Foundry IQ"
+            else:
+                patterns = [
+                    "Use layered architecture: separate concerns into routes, services, models",
+                    "Write tests first: include pytest setup in initial scaffold",
+                    "Use environment variables for all secrets and config",
+                    "Add a Makefile for common dev commands",
+                    "Document the API with docstrings and a README",
+                ]
+                pattern_source = "default"
+            console.print(f"✓ Retrieved {len(patterns)} architecture patterns ({pattern_source}) [dim]({_tick()}s)[/dim]")
         except Exception as e:
             console.print(f"[bold red]✗ Step 2 failed: {e}[/bold red]")
             sys.exit(1)
@@ -201,6 +216,30 @@ class ProjectKickstartAgent:
 
         # STEP 7: Push everything in a single commit
         try:
+            def _redact_secrets(files: dict) -> dict:
+                # GitHub secret scanning blocks pushes when generated code contains
+                # tokens that match real secret patterns (e.g. sk_test_... for Stripe).
+                # Replace common realistic-looking placeholders with safe dummy values.
+                import re
+                patterns = [
+                    # Stripe secret/publishable keys
+                    (r'sk_(test|live)_[A-Za-z0-9]{20,}', 'sk_test_PLACEHOLDER'),
+                    (r'pk_(test|live)_[A-Za-z0-9]{20,}', 'pk_test_PLACEHOLDER'),
+                    # Generic bearer tokens / API keys that look real (long base64-ish strings)
+                    (r'Bearer [A-Za-z0-9+/=]{40,}', 'Bearer PLACEHOLDER_TOKEN'),
+                    # AWS access keys
+                    (r'AKIA[0-9A-Z]{16}', 'AKIAPLACEHOLDER00000'),
+                    # Generic private key headers
+                    (r'-----BEGIN (RSA |EC )?PRIVATE KEY-----[\s\S]+?-----END (RSA |EC )?PRIVATE KEY-----',
+                     '-----BEGIN PRIVATE KEY-----\nPLACEHOLDER\n-----END PRIVATE KEY-----'),
+                ]
+                clean = {}
+                for path, content in files.items():
+                    for pat, replacement in patterns:
+                        content = re.sub(pat, replacement, content)
+                    clean[path] = content
+                return clean
+
             # bundle all generated files together
             all_files = {
                 "README.md": readme_md,
@@ -215,7 +254,7 @@ class ProjectKickstartAgent:
 
             gh.create_folder_structure(
                 repo,
-                all_files,
+                _redact_secrets(all_files),
                 commit_message="feat: initial project setup by Project Kickstart Agent",
             )
             console.print(f"✓ Pushed {total_files} files in a single commit [dim]({_tick()}s)[/dim]")
@@ -265,7 +304,7 @@ class ProjectKickstartAgent:
         summary.add_row("📄 Files pushed", f"{file_count} files")
         summary.add_row("✅ CI Workflow", ".github/workflows/ci.yml")
         summary.add_row("🎯 Sprint Issues", "5 issues created")
-        summary.add_row("🏗️ Patterns", "5 architecture patterns applied")
+        summary.add_row("🏗️ Patterns", f"5 patterns via {pattern_source}")
         summary.add_row("🤖 Model", self.copilot.current_model)
         summary.add_row("⏱️  Time", f"{elapsed}s")
 

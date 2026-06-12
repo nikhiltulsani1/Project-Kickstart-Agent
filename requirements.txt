@@ -1,5 +1,6 @@
 azure-ai-projects
 azure-identity
+azure-ai-inference
 PyGithub
 python-dotenv
 requests
