@@ -29,7 +29,7 @@ The whole thing runs as a sequence of steps inside `ProjectKickstartAgent.run()`
 main.py  →  ProjectKickstartAgent.run()
                │
                ├── parse_intent()         → ask GPT-4o for name, stack, type, language
-               ├── architecture patterns  → a hardcoded list of good defaults (for now)
+               ├── architecture patterns  → Azure AI Foundry IQ (gpt-4.1-mini) retrieves stack-specific patterns
                ├── generate README        → GPT-4o writes the README
                ├── generate file tree      → GPT-4o returns JSON of path → contents
                ├── create repo            → PyGithub makes the public repo
@@ -39,8 +39,6 @@ main.py  →  ProjectKickstartAgent.run()
 
 Two pieces do most of the work. `CopilotClient` talks to the GitHub Models API and is responsible for anything that needs the model to think. `GitHubClient` wraps PyGithub and handles the repo, the file commits, and the issues.
 
-One thing worth calling out: the architecture-patterns step is hardcoded right now. The plan is to swap that for real retrieval through Azure AI Foundry IQ, but the hackathon version just ships a sensible list.
-
 ## Tech Stack
 
 - Python 3.11
@@ -49,7 +47,7 @@ One thing worth calling out: the architecture-patterns step is hardcoded right n
 - click for the CLI
 - rich for the terminal output
 - python-dotenv for config
-- Azure AI Foundry IQ for pattern retrieval (still on the to-do list)
+- Azure AI Foundry IQ (gpt-4.1-mini) — architecture pattern retrieval
 
 ## How to Run
 
@@ -91,7 +89,11 @@ You'll watch the steps tick by in the terminal, and at the end it hands you a li
 
 ## Demo
 
-Coming soon.
+▶️ [Watch the demo](#) — link updated after recording
+
+> Agent runs in ~52 seconds end-to-end. Generates README,
+> ARCHITECTURE.md, TESTPLAN.md, CI workflow, folder structure,
+> and 5 sprint issues in a single commit.
 
 ## What I Learned
 
@@ -144,4 +146,4 @@ new repo, handle the 404 as the "repo is empty" case.
 - GitHub Copilot (VS Code) for day-to-day coding
 - GitHub Models API, which is also what powers the agent itself
 - Claude Code for setting up the project and some of the architecture decisions
-- Azure AI Foundry IQ for pattern retrieval (planned)
+- Azure AI Foundry IQ (gpt-4.1-mini) — architecture pattern retrieval, live
