@@ -1,4 +1,3 @@
-import re
 from src.language_config import detect_language_config
 
 
@@ -7,7 +6,11 @@ def generate_ci_workflow(intent: dict, copilot_client=None) -> str:
 
     config = detect_language_config(intent)
 
-    # build the YAML straight from config — no LLM round-trip needed here
+    # build the core `with:` block — some actions need extra keys (e.g. Java needs distribution)
+    with_lines = f"          {config['ci_version_key']}: '{config['ci_version_val']}'"
+    for key, val in config.get("ci_with_extras", {}).items():
+        with_lines += f"\n          {key}: '{val}'"
+
     yaml_template = f"""name: CI
 
 on:
@@ -26,7 +29,7 @@ jobs:
       - name: Set up {config['language'].title()}
         uses: {config['ci_setup_action']}
         with:
-          {config['ci_version_key']}: '{config['ci_version_val']}'
+{with_lines}
 
       - name: Install dependencies
         run: {config['install_command']}

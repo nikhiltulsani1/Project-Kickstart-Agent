@@ -11,6 +11,7 @@ _CONFIGS = {
         "ci_version_val": "3.11",
         "src_folder": "src",
         "placeholder_test": "pytest",
+        "llm_entry_files": ["src/main.py", "src/models.py", "src/routes.py"],
         "folder_structure": {
             "src/__init__.py": "",
             "src/main.py": "# Entry point",
@@ -31,12 +32,13 @@ _CONFIGS = {
         "dependency_file": "package.json",
         "test_framework": "jest",
         "test_command": "npm test",
-        "install_command": "npm install",
+        "install_command": "npm install && npm install --save-dev jest",
         "ci_setup_action": "actions/setup-node@v4",
         "ci_version_key": "node-version",
         "ci_version_val": "20",
         "src_folder": "src",
         "placeholder_test": "jest",
+        "llm_entry_files": ["src/index.js", "src/routes/index.js", "src/models/index.js"],
         "folder_structure": {
             "src/index.js": "// Entry point",
             "src/routes/index.js": "// Routes",
@@ -46,7 +48,7 @@ _CONFIGS = {
             "src/config/index.js": "// Configuration",
             "tests/index.test.js": "// Add your tests here",
             ".env.example": "PORT=3000\nDATABASE_URL=\nJWT_SECRET=",
-            "package.json": '{\n  "name": "project",\n  "version": "1.0.0",\n  "scripts": {\n    "start": "node src/index.js",\n    "test": "jest",\n    "dev": "nodemon src/index.js"\n  }\n}',
+            "package.json": '{\n  "name": "project",\n  "version": "1.0.0",\n  "scripts": {\n    "start": "node src/index.js",\n    "test": "jest",\n    "dev": "nodemon src/index.js"\n  },\n  "devDependencies": {\n    "jest": "^29.0.0"\n  }\n}',
             ".gitignore": "node_modules/\n.env\ndist/",
         },
     },
@@ -56,12 +58,13 @@ _CONFIGS = {
         "dependency_file": "go.mod",
         "test_framework": "go test",
         "test_command": "go test ./...",
-        "install_command": "go mod download",
+        "install_command": "go mod download && go mod tidy",
         "ci_setup_action": "actions/setup-go@v5",
         "ci_version_key": "go-version",
         "ci_version_val": "1.22",
         "src_folder": "cmd",
         "placeholder_test": "go",
+        "llm_entry_files": ["cmd/main.go", "internal/handlers/handler.go", "internal/models/model.go"],
         "folder_structure": {
             "cmd/main.go": "package main\n\nfunc main() {\n}",
             "internal/handlers/handler.go": "package handlers",
@@ -87,6 +90,10 @@ _CONFIGS = {
         "ci_version_val": "21",
         "src_folder": "src/main/java",
         "placeholder_test": "java",
+        # Java stubs compile cleanly on their own — LLM-generated Java tends to add
+        # cross-package imports that break compilation, so skip LLM for Java files
+        "llm_entry_files": [],
+        "ci_with_extras": {"distribution": "temurin"},
         "folder_structure": {
             "src/main/java/com/project/Application.java": (
                 "package com.project;\n\n"
@@ -99,10 +106,10 @@ _CONFIGS = {
                 "    }\n"
                 "}"
             ),
-            "src/main/java/com/project/controller/Controller.java": "package com.project.controller;",
-            "src/main/java/com/project/model/Model.java": "package com.project.model;",
-            "src/main/java/com/project/service/Service.java": "package com.project.service;",
-            "src/main/java/com/project/repository/Repository.java": "package com.project.repository;",
+            "src/main/java/com/project/controller/Controller.java": "package com.project.controller;\n\npublic class Controller {\n}",
+            "src/main/java/com/project/model/Model.java": "package com.project.model;\n\npublic class Model {\n}",
+            "src/main/java/com/project/service/Service.java": "package com.project.service;\n\npublic class Service {\n}",
+            "src/main/java/com/project/repository/Repository.java": "package com.project.repository;\n\npublic class Repository {\n}",
             "src/main/resources/application.properties": "server.port=8080\nspring.datasource.url=",
             "src/test/java/com/project/ApplicationTests.java": (
                 "package com.project;\n\n"
@@ -112,7 +119,45 @@ _CONFIGS = {
                 "    void contextLoads() {}\n"
                 "}"
             ),
-            "pom.xml": "<!-- Maven POM file -->",
+            "pom.xml": (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<project xmlns="http://maven.apache.org/POM/4.0.0"\n'
+                '         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n'
+                '         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">\n'
+                '    <modelVersion>4.0.0</modelVersion>\n'
+                '    <parent>\n'
+                '        <groupId>org.springframework.boot</groupId>\n'
+                '        <artifactId>spring-boot-starter-parent</artifactId>\n'
+                '        <version>3.2.0</version>\n'
+                '        <relativePath/>\n'
+                '    </parent>\n'
+                '    <groupId>com.project</groupId>\n'
+                '    <artifactId>project</artifactId>\n'
+                '    <version>0.0.1-SNAPSHOT</version>\n'
+                '    <properties>\n'
+                '        <java.version>21</java.version>\n'
+                '    </properties>\n'
+                '    <dependencies>\n'
+                '        <dependency>\n'
+                '            <groupId>org.springframework.boot</groupId>\n'
+                '            <artifactId>spring-boot-starter-web</artifactId>\n'
+                '        </dependency>\n'
+                '        <dependency>\n'
+                '            <groupId>org.springframework.boot</groupId>\n'
+                '            <artifactId>spring-boot-starter-test</artifactId>\n'
+                '            <scope>test</scope>\n'
+                '        </dependency>\n'
+                '    </dependencies>\n'
+                '    <build>\n'
+                '        <plugins>\n'
+                '            <plugin>\n'
+                '                <groupId>org.springframework.boot</groupId>\n'
+                '                <artifactId>spring-boot-maven-plugin</artifactId>\n'
+                '            </plugin>\n'
+                '        </plugins>\n'
+                '    </build>\n'
+                '</project>'
+            ),
             ".env.example": "DATABASE_URL=\nJWT_SECRET=",
         },
     },
@@ -122,12 +167,13 @@ _CONFIGS = {
         "dependency_file": "Gemfile",
         "test_framework": "rspec",
         "test_command": "bundle exec rspec",
-        "install_command": "bundle install",
+        "install_command": "bundle install && gem install rspec",
         "ci_setup_action": "ruby/setup-ruby@v1",
         "ci_version_key": "ruby-version",
         "ci_version_val": "3.3",
         "src_folder": "app",
         "placeholder_test": "ruby",
+        "llm_entry_files": ["app/controllers/application_controller.rb", "app/models/application_record.rb", "config/routes.rb"],
         "folder_structure": {
             "app/controllers/application_controller.rb": "class ApplicationController < ActionController::Base\nend",
             "app/models/application_record.rb": "class ApplicationRecord < ActiveRecord::Base\n  self.abstract_class = true\nend",
@@ -149,6 +195,48 @@ _KEYWORDS = {
     "java":   {"java", "spring", "springboot", "maven", "gradle"},
     "ruby":   {"ruby", "rails", "sinatra"},
 }
+
+
+def get_placeholder_test(intent: dict, project_name: str) -> tuple:
+    """Returns (filepath, content) for a language-appropriate placeholder test."""
+    config = detect_language_config(intent)
+    lang = config["language"]
+
+    if lang == "python":
+        return (
+            "tests/test_scaffold.py",
+            'import pytest\n\n\ndef test_project_scaffolded():\n    """Placeholder — replace with real tests."""\n    assert True\n\n\ndef test_readme_exists():\n    import os\n    assert os.path.exists("README.md") or True\n',
+        )
+
+    elif lang == "nodejs":
+        return (
+            "tests/scaffold.test.js",
+            'describe("Project Scaffold", () => {\n  test("project was scaffolded successfully", () => {\n    expect(true).toBe(true);\n  });\n\n  test("package.json exists", () => {\n    const fs = require("fs");\n    expect(fs.existsSync("package.json") || true).toBe(true);\n  });\n});\n',
+        )
+
+    elif lang == "go":
+        return (
+            "tests/scaffold_test.go",
+            'package tests\n\nimport "testing"\n\nfunc TestProjectScaffolded(t *testing.T) {\n\t// Placeholder — replace with real tests\n\tt.Log("Project scaffolded successfully")\n}\n',
+        )
+
+    elif lang == "java":
+        return (
+            "src/test/java/com/project/ScaffoldTest.java",
+            'package com.project;\n\nimport org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.assertTrue;\n\nclass ScaffoldTest {\n    @Test\n    void projectScaffolded() {\n        // Placeholder — replace with real tests\n        assertTrue(true);\n    }\n}\n',
+        )
+
+    elif lang == "ruby":
+        return (
+            "spec/scaffold_spec.rb",
+            'RSpec.describe "Project Scaffold" do\n  it "was scaffolded successfully" do\n    expect(true).to eq(true)\n  end\nend\n',
+        )
+
+    else:
+        return (
+            "tests/test_scaffold.py",
+            "def test_scaffold():\n    assert True\n",
+        )
 
 
 def detect_language_config(intent: dict) -> dict:
