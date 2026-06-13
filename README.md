@@ -39,6 +39,26 @@ main.py  →  ProjectKickstartAgent.run()
 
 Two pieces do most of the work. `CopilotClient` talks to the GitHub Models API and is responsible for anything that needs the model to think. `GitHubClient` wraps PyGithub and handles the repo, the file commits, and the issues.
 
+## Architecture Diagram
+
+```mermaid
+graph TD
+    A[User: plain English description] --> B[parse_intent]
+    B --> C[GitHub Copilot / GPT-4o]
+    A --> D[FoundryIQClient]
+    D --> E[Azure AI Foundry IQ - gpt-4.1-mini]
+    E --> F[5 architecture patterns]
+    C --> G[Generate README + ARCHITECTURE + TESTPLAN parallel]
+    F --> G
+    G --> H[language_config - detect stack]
+    H --> I[CI workflow template]
+    G --> J[GitHubClient - PyGithub]
+    I --> J
+    J --> K[Create repo + push files single commit]
+    K --> L[Create 5 sprint issues]
+    L --> M[GitHub Repo URL]
+```
+
 ## Tech Stack
 
 - Python 3.11
