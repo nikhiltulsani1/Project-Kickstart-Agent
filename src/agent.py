@@ -27,7 +27,7 @@ class ProjectKickstartAgent:
     def __init__(self):
         self.copilot = CopilotClient()
 
-    def run(self, description: str) -> None:
+    def run(self, description: str, name_override: str = None) -> None:
         console.print(f"[dim]Using model: {self.copilot.current_model}[/dim]")
         start_time = time.time()
 
@@ -43,6 +43,11 @@ class ProjectKickstartAgent:
         # STEP 1: Parse intent
         try:
             intent = self.parse_intent(description)
+            if name_override:
+                slug = re.sub(r'[^a-z0-9-]', '-', name_override.lower().strip())
+                slug = re.sub(r'-+', '-', slug).strip('-')
+                intent['project_name'] = slug
+                console.print(f"[dim]Using provided name: {slug}[/dim]")
             stack_items = ", ".join(intent.get("stack", []))
             console.print(f"✓ Parsed: {intent.get('project_name')} ({stack_items}) [dim]({_tick()}s)[/dim]")
         except Exception as e:
