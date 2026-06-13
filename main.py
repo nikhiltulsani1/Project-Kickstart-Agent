@@ -1,3 +1,7 @@
+import sys
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
+
 import click
 from rich.console import Console
 from src.agent import ProjectKickstartAgent

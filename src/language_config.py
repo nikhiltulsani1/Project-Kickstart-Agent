@@ -1,3 +1,25 @@
+_MIT_LICENSE = """MIT License
+
+Copyright (c) 2026 Project Kickstart Agent
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE."""
+
 _CONFIGS = {
     "python": {
         "language": "python",
@@ -24,6 +46,7 @@ _CONFIGS = {
             ".env.example": "DATABASE_URL=\nSECRET_KEY=\nDEBUG=True",
             "requirements.txt": "# Add your dependencies here",
             "Makefile": "install:\n\tpip install -r requirements.txt\n\ntest:\n\tpytest\n\nrun:\n\tpython src/main.py",
+            "LICENSE": _MIT_LICENSE,
         },
     },
     "nodejs": {
@@ -50,6 +73,7 @@ _CONFIGS = {
             ".env.example": "PORT=3000\nDATABASE_URL=\nJWT_SECRET=",
             "package.json": '{\n  "name": "project",\n  "version": "1.0.0",\n  "scripts": {\n    "start": "node src/index.js",\n    "test": "jest",\n    "dev": "nodemon src/index.js"\n  },\n  "devDependencies": {\n    "jest": "^29.0.0"\n  }\n}',
             ".gitignore": "node_modules/\n.env\ndist/",
+            "LICENSE": _MIT_LICENSE,
         },
     },
     "go": {
@@ -76,6 +100,7 @@ _CONFIGS = {
             "go.mod": "module github.com/user/project\n\ngo 1.22",
             ".env.example": "DATABASE_URL=\nPORT=8080",
             "Makefile": "build:\n\tgo build ./...\n\ntest:\n\tgo test ./...\n\nrun:\n\tgo run cmd/main.go",
+            "LICENSE": _MIT_LICENSE,
         },
     },
     "java": {
@@ -159,6 +184,7 @@ _CONFIGS = {
                 '</project>'
             ),
             ".env.example": "DATABASE_URL=\nJWT_SECRET=",
+            "LICENSE": _MIT_LICENSE,
         },
     },
     "ruby": {
@@ -184,6 +210,7 @@ _CONFIGS = {
             "spec/spec_helper.rb": "# RSpec configuration",
             "Gemfile": "source 'https://rubygems.org'\ngem 'rails'\ngem 'pg'\ngem 'rspec-rails', group: :test",
             ".env.example": "DATABASE_URL=\nSECRET_KEY_BASE=",
+            "LICENSE": _MIT_LICENSE,
         },
     },
 }
