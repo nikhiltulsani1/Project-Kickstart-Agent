@@ -75,6 +75,8 @@ cp .env.example .env
 ```
 GITHUB_TOKEN=your_pat_with_repo_scope
 GITHUB_USERNAME=your_github_username
+AZURE_FOUNDRY_ENDPOINT=your_endpoint_here
+AZURE_FOUNDRY_KEY=your_key_here
 ```
 
 The token needs `repo` scope. The same one is used for both the Models API and creating the repo, so you only need the one.
