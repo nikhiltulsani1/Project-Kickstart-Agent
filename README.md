@@ -149,3 +149,19 @@ new repo, handle the 404 as the "repo is empty" case.
 - GitHub Models API, which is also what powers the agent itself
 - Claude Code for setting up the project and some of the architecture decisions
 - Azure AI Foundry IQ (gpt-4.1-mini) — architecture pattern retrieval, live
+
+## Reliability & Safety
+
+- **Three-tier model fallback** — calls go to GPT-4o through GitHub Models first. If it hits a rate limit, the tool quietly switches to gpt-4.1-nano in the middle of a run and keeps going — the person never notices. Architecture patterns try Azure Foundry first, then GitHub Models, then a sensible built-in list. Nothing ever hard-fails.
+- **Secrets get stripped before anything is pushed** — generated files are checked for things that look like real API keys or tokens, and those get redacted before the commit goes up. The tool won't leak a credential into a public repo.
+- **CI is built from templates, not generated** — so the YAML is always valid. Every new repo comes back with a green check on the first commit.
+- **Generated files actually compile** — Go module names match the import paths, the Java pom.xml is a real working Spring Boot file, not a stub with a comment in it. Five languages, all valid.
+- **33 tests** cover the whole flow — parsing the description, generating the files, creating the repo, the CI step, and language detection across every supported stack.
+
+## Built By
+
+**Nikhil Tulsani**
+- Microsoft Learn Username: NikhilTulsani-1371
+- GitHub: [@nikhiltulsani1](https://github.com/nikhiltulsani1)
+- Hackathon: Microsoft Agents League 2026
+- Hackathon Registered Mail : Nikhil.tulsani1@gmail.com
