@@ -91,7 +91,7 @@ You'll watch the steps tick by in the terminal, and at the end it hands you a li
 
 ▶️ [Watch the demo](#) — link updated after recording
 
-> Agent runs in ~52 seconds end-to-end. Generates README,
+> Agent runs under 90 seconds end-to-end. Generates README,
 > ARCHITECTURE.md, TESTPLAN.md, CI workflow, folder structure,
 > and 5 sprint issues in a single commit.
 
