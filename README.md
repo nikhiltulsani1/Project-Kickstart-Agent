@@ -167,7 +167,6 @@ new repo, handle the 404 as the "repo is empty" case.
 
 - GitHub Copilot (VS Code) for day-to-day coding
 - GitHub Models API, which is also what powers the agent itself
-- Claude Code for setting up the project and some of the architecture decisions
 - Azure AI Foundry IQ (gpt-4.1-mini) — architecture pattern retrieval, live
 
 ## Reliability & Safety
