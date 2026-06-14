@@ -111,7 +111,7 @@ You'll watch the steps tick by in the terminal, and at the end it hands you a li
 
 ## Demo
 
-▶️ [Watch the demo](https://youtu.be/nPi7PBqIvOs) — link updated after recording
+▶️ [Watch the demo](https://youtu.be/nPi7PBqIvOs) 
 
 > Agent runs under 90 seconds end-to-end. Generates README,
 > ARCHITECTURE.md, TESTPLAN.md, CI workflow, folder structure,
