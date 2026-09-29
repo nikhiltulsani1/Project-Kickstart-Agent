@@ -183,4 +183,3 @@ new repo, handle the 404 as the "repo is empty" case.
 - Microsoft Learn Username: NikhilTulsani-1371
 - GitHub: [@nikhiltulsani1](https://github.com/nikhiltulsani1)
 - Hackathon: Microsoft Agents League 2026
-- Hackathon Registered Mail : Nikhil.tulsani1@gmail.com
